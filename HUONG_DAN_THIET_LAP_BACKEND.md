@@ -33,7 +33,7 @@ npm run deploy:api
 
 Lệnh đăng nhập mở trình duyệt để bạn cho phép Wrangler dùng tài khoản Cloudflare. Nếu trình duyệt không mở hoặc luồng callback không hoàn tất, chạy `npx wrangler login --device` và làm theo mã xác nhận hiện trên terminal. [Đăng nhập Wrangler](https://developers.cloudflare.com/workers/wrangler/commands/general/)
 
-`npm run deploy:api` dùng [wrangler.jsonc](wrangler.jsonc) để **tạo/triển khai Worker `timbaixe-api`**, nên không cần tạo Worker bằng tay. Sao chép URL Worker mà Wrangler in ra, dạng `https://timbaixe-api.<tài-khoản>.workers.dev`. Lần đầu Worker có thể trả `503 Máy chủ chưa được cấu hình` cho đến khi bạn thêm đủ secrets. [Triển khai Worker](https://developers.cloudflare.com/workers/wrangler/commands/workers/)
+`npm run deploy:api` dùng [wrangler.api.jsonc](wrangler.api.jsonc) để **tạo/triển khai Worker `timbaixe-api`**, nên không cần tạo Worker bằng tay. Sao chép URL Worker mà Wrangler in ra, dạng `https://timbaixe-api.<tài-khoản>.workers.dev`. Lần đầu Worker có thể trả `503 Máy chủ chưa được cấu hình` cho đến khi bạn thêm đủ secrets. [Triển khai Worker](https://developers.cloudflare.com/workers/wrangler/commands/workers/)
 
 Trong **Cloudflare Dashboard → Workers & Pages → timbaixe-api → Settings → Variables and Secrets**, thêm các giá trị sau với loại **Secret**, rồi chọn Deploy. Bạn cũng có thể dùng `npx wrangler secret put <TÊN_BIẾN>` từng biến; lệnh sẽ hỏi giá trị kín trong terminal. [Cấu hình Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/)
 
@@ -57,10 +57,10 @@ Trong **Workers & Pages → tim-bai-xe → Settings → Builds**, đặt:
 | --- | --- |
 | Git branch | `develop` |
 | Build command | `npm run build` |
-| Deploy command | `npm run deploy:web` |
+| Deploy command | `npm run deploy:web` hoặc mặc định `npx wrangler deploy` |
 | Root directory | Gốc repo |
 
-Workers Builds **không có ô Output directory**. Tệp [wrangler.web.jsonc](wrangler.web.jsonc) khai báo thư mục `dist` là static assets; lệnh `deploy:web` dùng đúng tệp này. Lệnh deploy mặc định `npx wrangler deploy` lại đọc [wrangler.jsonc](wrangler.jsonc) của backend và khiến Worker website phục vụ API, trang gốc trả 404. [Cấu hình Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/), [Worker static assets](https://developers.cloudflare.com/workers/static-assets/)
+Workers Builds **không có ô Output directory**. Tệp [wrangler.jsonc](wrangler.jsonc) ở gốc repo khai báo `dist` là static assets cho Worker website, nên cả lệnh deploy mặc định lẫn `npm run deploy:web` đều đưa giao diện lên `tim-bai-xe`. Backend dùng tệp [wrangler.api.jsonc](wrangler.api.jsonc) và lệnh `npm run deploy:api` riêng. [Cấu hình Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/), [Worker static assets](https://developers.cloudflare.com/workers/static-assets/)
 
 Trong **Settings → Builds → Build variables and secrets** của Worker `tim-bai-xe`, đặt các biến sau cho production rồi chạy build mới. Các biến bắt đầu bằng `VITE_` sẽ nằm trong mã trình duyệt, nên chỉ dùng giá trị công khai ở đây.
 
