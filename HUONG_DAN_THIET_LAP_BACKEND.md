@@ -7,7 +7,7 @@ Tài liệu này dành cho chủ dự án. Mục tiêu là để bạn tự nh�
 | Nơi | Cần làm | Chưa cần làm |
 | --- | --- | --- |
 | Supabase | Một project PostgreSQL, chạy migration, tạo một tài khoản quản trị | Tạo bảng bằng tay, tạo Storage bucket |
-| Cloudflare | Đăng nhập Wrangler; triển khai một Worker từ repo; tạo hoặc cập nhật một Pages project cho website | Tạo Worker bằng tay trong Dashboard, tạo R2 bucket |
+| Cloudflare | Worker `timbaixe-api` cho backend và Worker `tim-bai-xe` cho website | Tạo R2 bucket |
 
 Worker hiện tạo GeoJSON trực tiếp từ bảng bãi đã duyệt trong Supabase. Ảnh và xuất bản qua R2/CDN chưa được lập trình, nên tạo bucket lúc này không giúp luồng nhập bãi chạy được.
 
@@ -47,41 +47,38 @@ Trong **Cloudflare Dashboard → Workers & Pages → timbaixe-api → Settings �
 
 Nếu cần tạo `RATE_LIMIT_SALT`, chạy `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` trên máy của bạn và sao chép kết quả vào Secret. Không thêm dấu `/` cuối vào `ALLOWED_ORIGINS`. Khi chưa biết URL Pages, bạn có thể thêm bốn Secret đầu trước và cập nhật `ALLOWED_ORIGINS` sau bước 3.
 
-## 3. Tạo hoặc cập nhật website Cloudflare Pages
+## 3. Triển khai website trên Worker `tim-bai-xe`
 
-Mã ứng dụng hiện đã được đẩy lên nhánh **`develop`** của repo `binhvo1003/tim-bai-xe`. Nhánh `main` vẫn chỉ có tài liệu ban đầu và **không có `package.json`**, nên Pages phải triển khai từ `develop` cho đến khi mã được nhập vào `main`.
+Website đã được kết nối với repo qua **Cloudflare Workers Builds**. Mã ứng dụng nằm trên nhánh **`develop`**; nhánh `main` chưa có `package.json`. Worker frontend tên `tim-bai-xe`, khác với Worker backend `timbaixe-api`.
 
-Nếu chưa có Pages project, trong Cloudflare Dashboard chọn **Workers & Pages → Create application → Pages → Connect to Git**, chọn repo `tim-bai-xe`. Nếu đã có Pages project, mở project đó để sửa cấu hình. [Cloudflare Pages Git integration](https://developers.cloudflare.com/pages/get-started/git-integration/)
+Trong **Workers & Pages → tim-bai-xe → Settings → Builds**, đặt:
 
-Trong **Pages project → Settings → Builds → Branch control**, đặt **Production branch = `develop`** rồi lưu và triển khai lại. Nếu log báo `ENOENT /opt/buildhome/repo/package.json`, kiểm tra trước tiên nhánh đang build: lỗi này xảy ra khi Pages lấy `main`. [Đổi nhánh production trong Cloudflare Pages](https://developers.cloudflare.com/pages/configuration/git-integration/github-integration/)
-
-Đặt cấu hình build:
-
-| Mục | Giá trị |
+| Mục Workers Builds | Giá trị |
 | --- | --- |
-| Framework | React (Vite) |
+| Git branch | `develop` |
 | Build command | `npm run build` |
-| Build output directory | `dist` |
+| Deploy command | `npm run deploy:web` |
 | Root directory | Gốc repo |
-| `NODE_VERSION` nếu build dùng Node quá cũ | `22.23.4` |
 
-Trong **Pages project → Settings → Environment variables**, đặt các biến **Production** sau rồi triển khai lại Pages. Các biến bắt đầu bằng `VITE_` sẽ nằm trong mã trình duyệt, nên chỉ dùng giá trị công khai ở đây. [Cấu hình build và biến Pages](https://developers.cloudflare.com/pages/configuration/build-configuration/)
+Workers Builds **không có ô Output directory**. Tệp [wrangler.web.jsonc](wrangler.web.jsonc) khai báo thư mục `dist` là static assets; lệnh `deploy:web` dùng đúng tệp này. Lệnh deploy mặc định `npx wrangler deploy` lại đọc [wrangler.jsonc](wrangler.jsonc) của backend và khiến Worker website phục vụ API, trang gốc trả 404. [Cấu hình Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/), [Worker static assets](https://developers.cloudflare.com/workers/static-assets/)
 
-| Tên biến Pages | Giá trị cần điền |
+Trong **Settings → Builds → Build variables and secrets** của Worker `tim-bai-xe`, đặt các biến sau cho production rồi chạy build mới. Các biến bắt đầu bằng `VITE_` sẽ nằm trong mã trình duyệt, nên chỉ dùng giá trị công khai ở đây.
+
+| Tên biến frontend | Giá trị cần điền |
 | --- | --- |
-| `VITE_API_BASE_URL` | URL Worker ở bước 2, không có dấu `/` cuối |
+| `VITE_API_BASE_URL` | `https://timbaixe-api.binhvo1003.workers.dev` |
 | `VITE_SUPABASE_URL` | Project URL của Supabase |
 | `VITE_SUPABASE_ANON_KEY` | Khóa **Publishable** `sb_publishable_…` của Supabase |
 
-Sau lần deploy đầu, ghi lại origin Pages, ví dụ `https://timbaixe.pages.dev`, rồi thêm chính xác origin này vào `ALLOWED_ORIGINS` của Worker. Nếu gắn `timbaixe.com`, thêm cả `https://timbaixe.com` vào biến đó. Chỉ đổi DNS/gắn [custom domain](https://developers.cloudflare.com/pages/configuration/custom-domains/) sau khi bản `pages.dev` đã chạy đúng.
+Trong **Settings → Domains & Routes** của Worker `tim-bai-xe`, bật `workers.dev`. URL website hiện là `https://tim-bai-xe.binhvo1003.workers.dev`. Thêm chính xác origin này vào `ALLOWED_ORIGINS` của Worker backend. Nếu gắn `timbaixe.com`, thêm cả `https://timbaixe.com`. [Quản lý workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
 
 ## 4. Kiểm tra trước khi nhập bãi thật
 
 1. Mở `<URL_WORKER>/api/v1/parking.geojson`. Khi chưa duyệt bãi nào, kết quả đúng là `{"type":"FeatureCollection","features":[]}`.
-2. Mở URL Pages, vào **Đóng góp**, chạm bản đồ để ghim cổng, điền tên bãi và gửi. Trang phải báo đề xuất đang chờ; bãi **chưa** xuất hiện trong phần tìm kiếm.
+2. Mở URL website `https://tim-bai-xe.binhvo1003.workers.dev`, vào **Đóng góp**, chạm bản đồ để ghim cổng, điền tên bãi và gửi. Trang phải báo đề xuất đang chờ; bãi **chưa** xuất hiện trong phần tìm kiếm.
 3. Vào **Quản trị**, đăng nhập bằng tài khoản Supabase đã tạo. Mở ghim đề xuất, xác nhận tên phường hiện hành rồi chọn **Duyệt bãi**. Tải lại trang: bãi và phường của nó mới xuất hiện công khai. Với bãi thử, chọn **Từ chối** để không đưa dữ liệu giả lên bản đồ.
 4. Nếu trình duyệt báo lỗi CORS, kiểm tra `ALLOWED_ORIGINS` khớp origin đang mở và không có dấu `/` cuối. Nếu báo `503`, kiểm tra đủ năm Worker secrets và migration.
 
 ## Khi bạn thiết lập xong
 
-Nhắn mình **Project URL của Supabase**, **URL Worker**, **URL Pages** và trạng thái bạn đã tạo tài khoản quản trị/chạy migration hay chưa. Các URL này có thể chia sẻ. **Không gửi** mật khẩu database, mật khẩu quản trị, khóa `sb_secret_…` hay `RATE_LIMIT_SALT` trong chat. Nếu bạn kết nối Supabase với phiên làm việc này và đăng nhập Wrangler trên máy, mình có thể kiểm tra cấu hình và hoàn tất các bước kỹ thuật còn lại.
+Nhắn mình **Project URL của Supabase** và trạng thái bạn đã tạo tài khoản quản trị/chạy migration hay chưa. URL hai Worker đã được xác định ở trên. **Không gửi** mật khẩu database, mật khẩu quản trị, khóa `sb_secret_…` hay `RATE_LIMIT_SALT` trong chat.
