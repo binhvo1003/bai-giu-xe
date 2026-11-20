@@ -19,7 +19,7 @@ Worker hiện tạo GeoJSON trực tiếp từ bảng bãi đã duyệt trong Su
 4. Mở **Authentication → Users → Add user → Create new user**. Tạo tài khoản email/mật khẩu cho chính bạn; chọn xác nhận email ngay nếu Dashboard có tùy chọn đó. Sao chép **User ID** (UUID) của tài khoản, vì Worker chỉ cho ID này duyệt bãi. [Quản lý người dùng Supabase](https://supabase.com/docs/guides/auth/users)
 5. Mở **Connect** hoặc **Settings → API Keys** và ghi lại ba giá trị: **Project URL**, khóa **Publishable** bắt đầu bằng `sb_publishable_`, và khóa **Secret** bắt đầu bằng `sb_secret_`. Khóa Secret chỉ đặt ở Worker, tuyệt đối không đưa vào GitHub, Pages build variables hoặc tin nhắn chat. [Khóa API Supabase](https://supabase.com/docs/guides/getting-started/api-keys)
 
-> Tên biến trong repo hiện là `VITE_SUPABASE_ANON_KEY` và `SUPABASE_SERVICE_ROLE_KEY` để tương thích mã đã viết. Hãy điền **khóa Publishable mới** vào biến thứ nhất và **khóa Secret mới** vào biến thứ hai; không cần lấy khóa `anon` hoặc `service_role` đời cũ. [Hướng dẫn chuyển sang khóa mới](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys)
+> Worker backend dùng tên biến `SUPABASE_SERVICE_ROLE_KEY` để tương thích mã đã viết; hãy điền **khóa Secret mới** `sb_secret_…` vào biến này. Khóa Publishable công khai của frontend đã nằm trong [src/config.ts](src/config.ts). Không cần lấy khóa `anon` hoặc `service_role` đời cũ. [Hướng dẫn chuyển sang khóa mới](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys)
 
 ## 2. Đăng nhập Cloudflare và tạo Worker
 
@@ -64,13 +64,13 @@ Trong **Workers & Pages → tim-bai-xe → Settings → Builds**, đặt:
 
 Workers Builds **không có ô Output directory**. Tệp [wrangler.jsonc](wrangler.jsonc) ở gốc repo khai báo `dist` là static assets cho Worker website, nên cả lệnh deploy mặc định lẫn `npm run deploy:web` đều đưa giao diện lên `tim-bai-xe`. Backend dùng tệp [wrangler.api.jsonc](wrangler.api.jsonc) và lệnh `npm run deploy:api` riêng. [Cấu hình Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/), [Worker static assets](https://developers.cloudflare.com/workers/static-assets/)
 
-Trong **Settings → Builds → Build variables and secrets** của Worker `tim-bai-xe`, đặt các biến sau cho production rồi chạy build mới. Các biến bắt đầu bằng `VITE_` sẽ nằm trong mã trình duyệt, nên chỉ dùng giá trị công khai ở đây.
+Worker `tim-bai-xe` chỉ phục vụ static assets, nên mục **Settings → Variables and Secrets** dành cho runtime sẽ báo không thể thêm biến. Không cần thêm biến ở đó. Ba giá trị công khai dưới đây đã được khai báo trong [src/config.ts](src/config.ts) cho bản production; Cloudflare chỉ cần chạy build và deploy từ nhánh `develop`. Nếu chuyển sang project Supabase khác, có thể thay tệp này hoặc dùng **Settings → Builds → Build variables and secrets** để ghi đè lúc build. [Biến build của Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
 
-| Tên biến frontend | Giá trị cần điền |
+| Giá trị công khai trong frontend | Giá trị hiện tại |
 | --- | --- |
-| `VITE_API_BASE_URL` | `https://timbaixe-api.binhvo1003.workers.dev` |
-| `VITE_SUPABASE_URL` | Project URL của Supabase |
-| `VITE_SUPABASE_ANON_KEY` | Khóa **Publishable** `sb_publishable_…` của Supabase |
+| URL API | `https://timbaixe-api.binhvo1003.workers.dev` |
+| Supabase Project URL | `https://jiqohwewwopyssncraad.supabase.co` |
+| Supabase Publishable key | Khóa công khai `sb_publishable_…` trong `src/config.ts` |
 
 Trong **Settings → Domains & Routes** của Worker `tim-bai-xe`, bật `workers.dev`. URL website hiện là `https://tim-bai-xe.binhvo1003.workers.dev`. Thêm chính xác origin này vào `ALLOWED_ORIGINS` của Worker backend. Nếu gắn `timbaixe.com`, thêm cả `https://timbaixe.com`. [Quản lý workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
 

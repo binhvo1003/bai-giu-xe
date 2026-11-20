@@ -1,4 +1,5 @@
 import { parseParking, type Parking } from './parking';
+import { apiBaseUrl } from './config';
 
 export type Entrance = [number, number];
 export type ContributionDraft = { name: string; entrance: Entrance; address?: string; price?: string; hours?: string };
@@ -13,12 +14,11 @@ export type PendingContribution = {
   created_at: string;
 };
 
-const base = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || '';
-export const apiConfigured = Boolean(import.meta.env.VITE_API_BASE_URL);
+export const apiConfigured = Boolean(apiBaseUrl);
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
-  try { response = await fetch(`${base}${path}`, init); }
+  try { response = await fetch(`${apiBaseUrl}${path}`, init); }
   catch { throw new Error('Không kết nối được máy chủ. Hãy thử lại.'); }
   const body = await response.json().catch(() => null);
   if (!response.ok) throw new Error(body?.message || 'Không kết nối được máy chủ. Hãy thử lại.');

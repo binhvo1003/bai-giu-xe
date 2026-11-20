@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { apiConfigured, getPending, reviewContribution, type Entrance, type PendingContribution } from './api';
+import { supabasePublishableKey, supabaseUrl } from './config';
 
 type Props = { onInspect: (point: Entrance) => void; onPublished: () => void };
-const authConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+const authConfigured = Boolean(supabaseUrl && supabasePublishableKey);
 const auth = authConfigured && typeof window !== 'undefined' ? createClient(
-  import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY,
+  supabaseUrl, supabasePublishableKey,
   { auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true } }
 ) : null;
 
