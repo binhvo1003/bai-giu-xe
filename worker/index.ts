@@ -85,7 +85,10 @@ export function createApp(clientFactory: ClientFactory = makeClient) {
       const { data, error } = await client.from('parkings')
         .select('id,name,entrance_lon,entrance_lat,ward_code,ward_name,address,price,hours')
         .order('name').range(offset, offset + 999);
-      if (error) return c.json(errorMessage(503, 'Chưa tải được dữ liệu bãi xe.'), 503);
+      if (error) {
+        console.error('Supabase parkings query failed', { code: error.code, message: error.message });
+        return c.json(errorMessage(503, 'Chưa tải được dữ liệu bãi xe.'), 503);
+      }
       rows.push(...(data as ParkingRow[]));
       if (!data || data.length < 1000) break;
     }

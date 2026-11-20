@@ -39,13 +39,15 @@ Trong **Cloudflare Dashboard → Workers & Pages → timbaixe-api → Settings �
 
 | Tên biến Worker | Giá trị cần điền |
 | --- | --- |
-| `SUPABASE_URL` | Project URL của Supabase |
+| `SUPABASE_URL` | **Project URL gốc**, dạng `https://<project-ref>.supabase.co`; không thêm `/rest/v1`, `/auth/v1` hoặc đường dẫn khác |
 | `SUPABASE_SERVICE_ROLE_KEY` | Khóa **Secret** `sb_secret_…` của Supabase |
 | `ADMIN_USER_ID` | User ID của tài khoản quản trị vừa tạo |
 | `RATE_LIMIT_SALT` | Chuỗi ngẫu nhiên dài, riêng cho dự án |
-| `ALLOWED_ORIGINS` | Các origin website được gọi API, cách nhau bằng dấu phẩy, ví dụ `https://timbaixe.pages.dev,https://timbaixe.com` |
+| `ALLOWED_ORIGINS` | Các origin website được gọi API, cách nhau bằng dấu phẩy, ví dụ `https://tim-bai-xe.binhvo1003.workers.dev,https://timbaixe.com` |
 
-Nếu cần tạo `RATE_LIMIT_SALT`, chạy `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` trên máy của bạn và sao chép kết quả vào Secret. Không thêm dấu `/` cuối vào `ALLOWED_ORIGINS`. Khi chưa biết URL Pages, bạn có thể thêm bốn Secret đầu trước và cập nhật `ALLOWED_ORIGINS` sau bước 3.
+Nếu cần tạo `RATE_LIMIT_SALT`, chạy `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` trên máy của bạn và sao chép kết quả vào Secret. Không thêm dấu `/` cuối vào `ALLOWED_ORIGINS`.
+
+**Lỗi hiện tại:** API đã có tên của cả năm secret nhưng truy vấn Supabase trả `PGRST125: Invalid path specified in request URL`. Hãy sửa riêng secret `SUPABASE_URL` thành Project URL gốc lấy trong **Supabase → Connect**, rồi mở lại `https://timbaixe-api.binhvo1003.workers.dev/api/v1/parking.geojson`. Nếu còn 503, giữ nguyên thông báo để kiểm tra tiếp. [Mã lỗi PostgREST](https://supabase.com/docs/guides/api/rest/postgrest-error-codes), [Supabase Project URL](https://supabase.com/docs/reference/javascript/initializing/)
 
 ## 3. Triển khai website trên Worker `tim-bai-xe`
 
