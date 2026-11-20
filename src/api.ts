@@ -16,12 +16,16 @@ export type PendingContribution = {
 
 export const apiConfigured = Boolean(apiBaseUrl);
 
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try { response = await fetch(`${apiBaseUrl}${path}`, init); }
   catch { throw new Error('Không kết nối được máy chủ. Hãy thử lại.'); }
   const body = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(body?.message || 'Không kết nối được máy chủ. Hãy thử lại.');
+  if (!response.ok) throw new ApiError(body?.message || 'Không kết nối được máy chủ. Hãy thử lại.', response.status);
   return body as T;
 }
 

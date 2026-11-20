@@ -8,6 +8,11 @@ const AdminPanel = lazy(() => import('./AdminPanel'));
 type Search = { kind: 'point'; point: [number, number]; label: string; origin: string } | { kind: 'ward'; code: string; label: string } | { kind: 'none' };
 type Place = { display_name: string; lon: string; lat: string };
 const center: [number, number] = [106.691, 10.776];
+const adminPath = '/quan-tri';
+
+function isAdminPath() {
+  return window.location.pathname.replace(/\/+$/, '') === adminPath;
+}
 
 function App() {
   const [parkings, setParkings] = useState<Parking[]>([]);
@@ -21,7 +26,7 @@ function App() {
   const [selected, setSelected] = useState<Parking | null>(null);
   const [needsOrigin, setNeedsOrigin] = useState(false);
   const [routeError, setRouteError] = useState('');
-  const [view, setView] = useState<'map' | 'contribute' | 'admin'>('map');
+  const [view, setView] = useState<'map' | 'contribute' | 'admin'>(() => isAdminPath() ? 'admin' : 'map');
   const [draftEntrance, setDraftEntrance] = useState<Entrance | null>(null);
   const [pinError, setPinError] = useState('');
   const mapHost = useRef<HTMLDivElement>(null);
@@ -30,6 +35,21 @@ function App() {
   const draftMarker = useRef<Marker | null>(null);
   const opener = useRef<HTMLElement | null>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+
+  function showPublicView(next: 'map' | 'contribute') {
+    if (isAdminPath()) window.history.pushState(null, '', '/');
+    setView(next);
+    setDraftEntrance(null);
+  }
+
+  useEffect(() => {
+    const onPopState = () => {
+      setView(isAdminPath() ? 'admin' : 'map');
+      setDraftEntrance(null);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   function openParking(parking: Parking) {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -211,9 +231,9 @@ function App() {
   }
 
   return <>
-    <header><div className="brand">P <span>timbaixe.com</span></div><p>Bản đồ cộng đồng tìm đúng cổng bãi giữ xe máy tại TP.HCM</p><nav aria-label="Điều hướng chính"><button aria-current={view === 'map'} onClick={() => setView('map')}>Tìm bãi</button><button aria-current={view === 'contribute'} onClick={() => { setView('contribute'); setDraftEntrance(null); }}>Đóng góp</button><button aria-current={view === 'admin'} onClick={() => { setView('admin'); setDraftEntrance(null); }}>Quản trị</button></nav></header>
+    <header><div className="brand">P <span>timbaixe.com</span></div><p>Bản đồ cộng đồng tìm đúng cổng bãi giữ xe máy tại TP.HCM</p><nav aria-label="Điều hướng chính"><button aria-current={view === 'map'} onClick={() => showPublicView('map')}>Tìm bãi</button><button aria-current={view === 'contribute'} onClick={() => showPublicView('contribute')}>Đóng góp</button></nav></header>
     <main className={`workspace-${view}`}>
-      {view === 'contribute' ? <ContributePanel entrance={draftEntrance} onLocate={locateDraft} onDone={() => { setView('map'); setDraftEntrance(null); }} /> : view === 'admin' ? <Suspense fallback={<section className="admin-panel"><p role="status">Đang mở quản trị…</p></section>}><AdminPanel onInspect={(point) => { setDraftEntrance(point); map.current?.flyTo({ center: point, zoom: 17 }); }} onPublished={reloadParkings} /></Suspense> : <section className="search-panel" aria-label="Tìm bãi xe">
+      {view === 'contribute' ? <ContributePanel entrance={draftEntrance} onLocate={locateDraft} onDone={() => showPublicView('map')} /> : view === 'admin' ? <Suspense fallback={<section className="admin-panel"><p role="status">Đang mở quản trị…</p></section>}><AdminPanel onInspect={(point) => { setDraftEntrance(point); map.current?.flyTo({ center: point, zoom: 17 }); }} onPublished={reloadParkings} /></Suspense> : <section className="search-panel" aria-label="Tìm bãi xe">
         <h1>Tìm bãi giữ xe máy</h1>
         <button onClick={locate} disabled={busy}>Dùng vị trí của tôi</button>
         <div className="address-row"><input value={address} onChange={(e) => setAddress(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void lookup(); }} placeholder="Nhập địa chỉ hoặc điểm đến" aria-label="Địa chỉ quán hoặc điểm đến" /><button onClick={() => void lookup()} disabled={busy || !address.trim()}>Tìm</button></div>

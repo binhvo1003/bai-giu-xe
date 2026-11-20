@@ -22,6 +22,17 @@ describe('API bãi xe', () => {
     expect(response.status).toBe(401);
   });
 
+  it('không cho tài khoản khác xem hàng chờ', async () => {
+    const getUser = vi.fn().mockResolvedValue({ data: { user: { id: 'someone-else' } }, error: null });
+    const from = vi.fn();
+    const app = createApp(() => ({ auth: { getUser }, from }) as unknown as SupabaseClient);
+    const response = await app.request('http://localhost/api/v1/admin/contributions', {
+      headers: { Authorization: 'Bearer valid-token' }
+    }, env);
+    expect(response.status).toBe(401);
+    expect(from).not.toHaveBeenCalled();
+  });
+
   it('chỉ chủ dự án được duyệt bãi và API trả CORS cho website đã cho phép', async () => {
     const getUser = vi.fn().mockResolvedValue({ data: { user: { id: 'someone-else' } }, error: null });
     const rpc = vi.fn().mockResolvedValue({ data: 'reviewed', error: null });

@@ -78,7 +78,7 @@ Trong **Settings → Domains & Routes** của Worker `tim-bai-xe`, bật `worker
 
 1. Mở `<URL_WORKER>/api/v1/parking.geojson`. Khi chưa duyệt bãi nào, kết quả đúng là `{"type":"FeatureCollection","features":[]}`.
 2. Mở URL website `https://tim-bai-xe.binhvo1003.workers.dev`, vào **Đóng góp**, chạm bản đồ để ghim cổng, điền tên bãi và gửi. Trang phải báo đề xuất đang chờ; bãi **chưa** xuất hiện trong phần tìm kiếm.
-3. Vào **Quản trị**, đăng nhập bằng tài khoản Supabase đã tạo. Mở ghim đề xuất, xác nhận tên phường hiện hành rồi chọn **Duyệt bãi**. Tải lại trang: bãi và phường của nó mới xuất hiện công khai. Với bãi thử, chọn **Từ chối** để không đưa dữ liệu giả lên bản đồ.
+3. Mở trực tiếp `https://tim-bai-xe.binhvo1003.workers.dev/quan-tri` (hoặc `https://timbaixe.com/quan-tri` khi dùng tên miền), đăng nhập bằng tài khoản Supabase có User ID trùng `ADMIN_USER_ID`. Menu công khai không có nút quản trị. Mở ghim đề xuất, xác nhận tên phường hiện hành rồi chọn **Duyệt bãi**. Tải lại trang: bãi và phường của nó mới xuất hiện công khai. Với bãi thử, chọn **Từ chối** để không đưa dữ liệu giả lên bản đồ.
 4. Nếu trình duyệt báo lỗi CORS, kiểm tra `ALLOWED_ORIGINS` khớp origin đang mở và không có dấu `/` cuối. Nếu báo `503`, kiểm tra đủ năm Worker secrets và migration.
 
 ## Khi bạn thiết lập xong

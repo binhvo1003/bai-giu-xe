@@ -38,7 +38,7 @@ Chỉ đường hiện mở Google Maps với điểm đầu từ GPS hoặc đ�
 
 Xem [hướng dẫn thiết lập Supabase và Cloudflare](HUONG_DAN_THIET_LAP_BACKEND.md) để biết chính xác các tài nguyên và khóa cần tạo.
 
-Ứng dụng có mục **Đóng góp → Thêm bãi xe**. Khách chỉ cần tên và ghim cổng xe máy trên bản đồ; địa chỉ, giá và giờ mở cửa là tùy chọn. Đề xuất được lưu ở trạng thái chờ. Chủ dự án mở **Quản trị**, đăng nhập bằng Supabase Auth, xem ghim và xác nhận phường trước khi duyệt hoặc từ chối. Chỉ bãi đã duyệt được xuất qua `GET /api/v1/parking.geojson`; phường mới xuất hiện trong bộ chọn từ cùng bản xuất này. Bản xuất hiện được tạo theo yêu cầu từ cơ sở dữ liệu; chưa có bước sao chép sang R2/CDN.
+Ứng dụng có mục **Đóng góp → Thêm bãi xe**. Khách chỉ cần tên và ghim cổng xe máy trên bản đồ; địa chỉ, giá và giờ mở cửa là tùy chọn. Đề xuất được lưu ở trạng thái chờ. Chủ dự án mở trực tiếp `/quan-tri` (không có nút trong menu công khai), đăng nhập bằng Supabase Auth, xem ghim và xác nhận phường trước khi duyệt hoặc từ chối. Đường dẫn riêng không phải lớp bảo mật: API chỉ trả hàng chờ và cho duyệt khi User ID của phiên đăng nhập khớp `ADMIN_USER_ID`. Chỉ bãi đã duyệt được xuất qua `GET /api/v1/parking.geojson`; phường mới xuất hiện trong bộ chọn từ cùng bản xuất này. Bản xuất hiện được tạo theo yêu cầu từ cơ sở dữ liệu; chưa có bước sao chép sang R2/CDN.
 
 ### Cấu hình Supabase và Worker
 

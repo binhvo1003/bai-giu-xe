@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { apiConfigured, getPending, reviewContribution, type Entrance, type PendingContribution } from './api';
+import { ApiError, apiConfigured, getPending, reviewContribution, type Entrance, type PendingContribution } from './api';
 import { supabasePublishableKey, supabaseUrl } from './config';
 
 type Props = { onInspect: (point: Entrance) => void; onPublished: () => void };
@@ -24,8 +24,17 @@ export default function AdminPanel({ onInspect, onPublished }: Props) {
 
   async function load(accessToken: string) {
     setBusy(true); setError('');
-    try { setQueue((await getPending(accessToken)).contributions); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : 'Không tải được hàng chờ.'); }
+    try {
+      setQueue((await getPending(accessToken)).contributions);
+      setToken(accessToken);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) {
+        setToken('');
+        setQueue([]);
+        await auth?.auth.signOut();
+        setError('Tài khoản này không có quyền quản trị.');
+      } else setError(cause instanceof Error ? cause.message : 'Không tải được hàng chờ.');
+    }
     finally { setBusy(false); }
   }
 
@@ -33,7 +42,6 @@ export default function AdminPanel({ onInspect, onPublished }: Props) {
     if (!auth || !apiConfigured) return;
     void auth.auth.getSession().then(({ data }) => {
       if (data.session?.access_token) {
-        setToken(data.session.access_token);
         void load(data.session.access_token);
       }
     });
@@ -49,8 +57,7 @@ export default function AdminPanel({ onInspect, onPublished }: Props) {
     });
     setBusy(false);
     if (signInError || !data.session) { setError('Đăng nhập không thành công. Kiểm tra email và mật khẩu.'); return; }
-    setToken(data.session.access_token);
-    void load(data.session.access_token);
+    await load(data.session.access_token);
   }
 
   async function review(contribution: PendingContribution, action: 'approve' | 'reject', wardName = '') {
@@ -66,7 +73,13 @@ export default function AdminPanel({ onInspect, onPublished }: Props) {
       setMessage(action === 'approve' ? `Đã duyệt ${contribution.name}.` : `Đã từ chối ${contribution.name}.`);
       await load(session.access_token);
       if (action === 'approve') onPublished();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Không xử lý được đề xuất.'); }
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) {
+        setToken(''); setQueue([]);
+        await auth.auth.signOut();
+        setError('Phiên quản trị không còn hợp lệ. Hãy đăng nhập lại.');
+      } else setError(cause instanceof Error ? cause.message : 'Không xử lý được đề xuất.');
+    }
     finally { setBusy(false); }
   }
 
@@ -77,7 +90,7 @@ export default function AdminPanel({ onInspect, onPublished }: Props) {
       <label htmlFor="admin-password">Mật khẩu</label><input id="admin-password" name="password" type="password" autoComplete="current-password" required />
       <button className="primary" disabled={busy}>Đăng nhập</button>
     </form> : <>
-      <div className="admin-actions"><button className="secondary" disabled={busy} onClick={() => void auth.auth.getSession().then(({ data }) => { if (data.session) { setToken(data.session.access_token); void load(data.session.access_token); } else { setToken(''); setError('Phiên đăng nhập đã hết. Hãy đăng nhập lại.'); } })}>Tải lại</button><button className="secondary" onClick={() => { void auth.auth.signOut(); setToken(''); setQueue([]); }}>Đăng xuất</button></div>
+      <div className="admin-actions"><button className="secondary" disabled={busy} onClick={() => void auth.auth.getSession().then(({ data }) => { if (data.session) void load(data.session.access_token); else { setToken(''); setQueue([]); setError('Phiên đăng nhập đã hết. Hãy đăng nhập lại.'); } })}>Tải lại</button><button className="secondary" onClick={() => { void auth.auth.signOut(); setToken(''); setQueue([]); }}>Đăng xuất</button></div>
       <p className="admin-help">Xác nhận cổng vào và phường trước khi duyệt. Bãi mới chỉ xuất hiện công khai sau bước này.</p>
       {busy && <p role="status">Đang xử lý…</p>}
       {!busy && queue.length === 0 && <p className="empty">Không có bãi nào đang chờ duyệt.</p>}
