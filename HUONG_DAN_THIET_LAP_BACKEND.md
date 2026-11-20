@@ -49,9 +49,11 @@ Nếu cần tạo `RATE_LIMIT_SALT`, chạy `node -e "console.log(require('crypt
 
 ## 3. Tạo hoặc cập nhật website Cloudflare Pages
 
-Mã mới phải được **commit và push lên GitHub** trước khi Pages đọc được. Repo đã có remote `git@github.com:binhvo1003/tim-bai-xe.git`, nhưng những thay đổi đang ở máy cục bộ; nếu bạn chưa muốn đẩy mã, hoàn tất hai bước trên rồi dừng tại đây để mình chuẩn bị lần triển khai.
+Mã ứng dụng hiện đã được đẩy lên nhánh **`develop`** của repo `binhvo1003/tim-bai-xe`. Nhánh `main` vẫn chỉ có tài liệu ban đầu và **không có `package.json`**, nên Pages phải triển khai từ `develop` cho đến khi mã được nhập vào `main`.
 
 Nếu chưa có Pages project, trong Cloudflare Dashboard chọn **Workers & Pages → Create application → Pages → Connect to Git**, chọn repo `tim-bai-xe`. Nếu đã có Pages project, mở project đó để sửa cấu hình. [Cloudflare Pages Git integration](https://developers.cloudflare.com/pages/get-started/git-integration/)
+
+Trong **Pages project → Settings → Builds → Branch control**, đặt **Production branch = `develop`** rồi lưu và triển khai lại. Nếu log báo `ENOENT /opt/buildhome/repo/package.json`, kiểm tra trước tiên nhánh đang build: lỗi này xảy ra khi Pages lấy `main`. [Đổi nhánh production trong Cloudflare Pages](https://developers.cloudflare.com/pages/configuration/git-integration/github-integration/)
 
 Đặt cấu hình build:
 
