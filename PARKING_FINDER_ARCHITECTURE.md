@@ -4,6 +4,8 @@ timbaixe.com là bản đồ cộng đồng phi lợi nhuận giúp người đi
 
 ## Thành phần và luồng dữ liệu
 
+**Trạng thái triển khai (19/11/2026):** Repo đã có biểu mẫu gửi bãi, Worker API, migration Supabase và màn hình chủ dự án duyệt. Worker hiện tạo GeoJSON từ bảng bãi đã duyệt theo mỗi yêu cầu; bước xuất bản phiên bản lên R2/CDN và luồng ảnh vẫn thuộc phần tiếp theo. Chưa có dự án Supabase hoặc Worker được cấu hình trong repo, nên các API này chưa chạy với dữ liệu thật.
+
 | Thành phần | Trách nhiệm trong MVP |
 | --- | --- |
 | React, Vite, TypeScript trên Cloudflare Pages | Phục vụ trang chủ có tiêu đề và phần giới thiệu bằng tiếng Việt ngay trong HTML ban đầu. React điều khiển tìm kiếm, bản đồ và bảng chi tiết. |

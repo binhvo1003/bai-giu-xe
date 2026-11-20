@@ -32,4 +32,27 @@ Ví dụ cấu trúc (tọa độ chỉ minh họa, **không đưa vào bản c�
 
 Ứng dụng hiện dùng tile OpenStreetMap và Nominatim để thử luồng tìm kiếm thủ công. Trước khi triển khai công khai, cần chọn nhà cung cấp có điều khoản, hạn mức và độ chính xác phù hợp theo Phase 1.3. Có thể đổi endpoint tra địa chỉ bằng `VITE_GEOCODE_URL`; endpoint cần trả về danh sách có `display_name`, `lon`, `lat` theo định dạng Nominatim. Không thêm khóa bí mật vào biến `VITE_` vì biến này hiện trong trình duyệt.
 
-Chỉ đường hiện mở Google Maps với điểm đầu từ GPS hoặc địa chỉ và điểm cuối là tọa độ cổng. Khi chọn phường, người dùng chọn điểm xuất phát trước. Các luồng đóng góp, kiểm duyệt và xuất bản tự động thuộc Phase 3 và chưa được kết nối.
+Chỉ đường hiện mở Google Maps với điểm đầu từ GPS hoặc địa chỉ và điểm cuối là tọa độ cổng. Khi chọn phường, người dùng chọn điểm xuất phát trước. Mã luồng đóng góp và kiểm duyệt đã có; cần cấu hình các dịch vụ bên dưới để sử dụng trên website.
+
+## Nhập và duyệt bãi trên website
+
+Xem [hướng dẫn thiết lập Supabase và Cloudflare](HUONG_DAN_THIET_LAP_BACKEND.md) để biết chính xác các tài nguyên và khóa cần tạo.
+
+Ứng dụng có mục **Đóng góp → Thêm bãi xe**. Khách chỉ cần tên và ghim cổng xe máy trên bản đồ; địa chỉ, giá và giờ mở cửa là tùy chọn. Đề xuất được lưu ở trạng thái chờ. Chủ dự án mở **Quản trị**, đăng nhập bằng Supabase Auth, xem ghim và xác nhận phường trước khi duyệt hoặc từ chối. Chỉ bãi đã duyệt được xuất qua `GET /api/v1/parking.geojson`; phường mới xuất hiện trong bộ chọn từ cùng bản xuất này. Bản xuất hiện được tạo theo yêu cầu từ cơ sở dữ liệu; chưa có bước sao chép sang R2/CDN.
+
+### Cấu hình Supabase và Worker
+
+1. Tạo dự án Supabase. Chạy [migration](supabase/migrations/20261119_parking_contributions.sql) trong SQL Editor. Migration tạo bảng chờ, bảng bãi đã duyệt, giới hạn gửi và hàm duyệt có giao dịch.
+2. Tạo tài khoản chủ dự án trong Supabase Auth; lấy **User ID** của tài khoản đó. Chỉ ID này có quyền xem và xử lý hàng chờ qua Worker.
+3. Sao chép `.dev.vars.example` thành `.dev.vars`, điền URL Supabase, service role key, User ID, chuỗi ngẫu nhiên dài cho `RATE_LIMIT_SALT` và origin của giao diện. `.dev.vars` không được đưa vào Git.
+4. Sao chép `.env.example` thành `.env.local`, điền URL Worker cục bộ, URL Supabase và publishable/anon key. Chỉ `VITE_SUPABASE_ANON_KEY` được đưa ra trình duyệt; **không** đặt service role key trong biến `VITE_`.
+5. Chạy hai lệnh ở hai terminal:
+
+```sh
+npm run dev:api
+npm run dev
+```
+
+Worker chạy tại `http://127.0.0.1:8787`; Vite dùng URL ghi trong `.env.local`. Nếu chưa có cấu hình, trang vẫn hiển thị GeoJSON tĩnh, nhưng biểu mẫu sẽ báo chưa kết nối máy chủ và không cho gửi.
+
+Khi triển khai, đặt năm giá trị trong `.dev.vars.example` thành **Worker secrets**, chạy `npm run deploy:api`, rồi đặt `VITE_API_BASE_URL` thành URL Worker trong cấu hình build của frontend. Đặt `VITE_SUPABASE_URL` và `VITE_SUPABASE_ANON_KEY` cho đăng nhập quản trị. `ALLOWED_ORIGINS` phải chứa chính xác origin của website; không thêm dấu gạch chéo cuối. Việc tạo dự án, chạy migration và cấu hình secrets chưa được thực hiện trong repo này.

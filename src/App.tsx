@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { type Map as MapLibreMap, type Marker } from 'maplibre-gl';
-import { inWard, nearby, parseParking, type Parking } from './parking';
+import { inWard, nearby, type Parking } from './parking';
+import { fetchParkings, type Entrance } from './api';
+import ContributePanel from './ContributePanel';
+const AdminPanel = lazy(() => import('./AdminPanel'));
 
 type Search = { kind: 'point'; point: [number, number]; label: string; origin: string } | { kind: 'ward'; code: string; label: string } | { kind: 'none' };
 type Place = { display_name: string; lon: string; lat: string };
@@ -18,9 +21,13 @@ function App() {
   const [selected, setSelected] = useState<Parking | null>(null);
   const [needsOrigin, setNeedsOrigin] = useState(false);
   const [routeError, setRouteError] = useState('');
+  const [view, setView] = useState<'map' | 'contribute' | 'admin'>('map');
+  const [draftEntrance, setDraftEntrance] = useState<Entrance | null>(null);
+  const [pinError, setPinError] = useState('');
   const mapHost = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const markers = useRef<Marker[]>([]);
+  const draftMarker = useRef<Marker | null>(null);
   const opener = useRef<HTMLElement | null>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
 
@@ -60,12 +67,12 @@ function App() {
     };
   }, [selected]);
 
-  useEffect(() => {
-    fetch('/parking.geojson').then((response) => {
-      if (!response.ok) throw new Error('Không tải được dữ liệu bãi xe.');
-      return response.json();
-    }).then((data) => setParkings(parseParking(data))).catch((error) => setLoadError(String(error.message ?? error)));
-  }, []);
+  function reloadParkings() {
+    fetchParkings().then((data) => { setParkings(data); setLoadError(''); })
+      .catch((error) => setLoadError(String(error.message ?? error)));
+  }
+
+  useEffect(() => { reloadParkings(); }, []);
 
   const wards = useMemo(() => Array.from(new Map(parkings.map((p) => [p.wardCode, p.wardName])).entries())
     .sort((a, b) => a[1].localeCompare(b[1], 'vi')), [parkings]);
@@ -96,7 +103,7 @@ function App() {
 
   useEffect(() => {
     markers.current.forEach((marker) => marker.remove());
-    markers.current = results.map(({ parking }) => {
+    markers.current = (view === 'map' ? results : []).map(({ parking }) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'parking-marker';
@@ -107,13 +114,52 @@ function App() {
       button.addEventListener('click', () => openParking(parking));
       return new maplibregl.Marker({ element: button }).setLngLat(parking.entrance).addTo(map.current!);
     });
+    if (view !== 'map') return;
     if (search.kind === 'point') map.current?.flyTo({ center: search.point, zoom: 14 });
     else if (results.length) {
       const bounds = new maplibregl.LngLatBounds();
       results.forEach(({ parking }) => bounds.extend(parking.entrance));
       map.current?.fitBounds(bounds, { padding: 65, maxZoom: 15 });
     }
-  }, [results, search]);
+  }, [results, search, view]);
+
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance || view !== 'contribute') return;
+    const onClick = (event: maplibregl.MapMouseEvent) => {
+      setDraftEntrance([event.lngLat.lng, event.lngLat.lat]);
+      setPinError('');
+    };
+    instance.on('click', onClick);
+    return () => { instance.off('click', onClick); };
+  }, [view]);
+
+  useEffect(() => {
+    draftMarker.current?.remove();
+    draftMarker.current = null;
+    if (view === 'map' || !draftEntrance || !map.current) return;
+    const element = document.createElement('div');
+    element.className = 'draft-marker';
+    element.textContent = '+';
+    const marker = new maplibregl.Marker({ element, draggable: view === 'contribute' })
+      .setLngLat(draftEntrance).addTo(map.current);
+    if (view === 'contribute') marker.on('dragend', () => {
+      const point = marker.getLngLat();
+      setDraftEntrance([point.lng, point.lat]);
+    });
+    draftMarker.current = marker;
+    return () => { marker.remove(); };
+  }, [draftEntrance, view]);
+
+  function locateDraft() {
+    if (!navigator.geolocation) { setPinError('Thiết bị không hỗ trợ định vị. Hãy chạm vào bản đồ.'); return; }
+    navigator.geolocation.getCurrentPosition(({ coords }) => {
+      const point: Entrance = [coords.longitude, coords.latitude];
+      setDraftEntrance(point);
+      map.current?.flyTo({ center: point, zoom: 17 });
+      setPinError('');
+    }, () => setPinError('Không lấy được vị trí. Hãy chạm vào bản đồ để đặt ghim.'), { enableHighAccuracy: true, timeout: 10000 });
+  }
 
   function choosePoint(point: [number, number], label: string, origin: string) {
     setSearch({ kind: 'point', point, label, origin });
@@ -165,9 +211,9 @@ function App() {
   }
 
   return <>
-    <header><div className="brand">P <span>timbaixe.com</span></div><p>Bản đồ cộng đồng tìm đúng cổng bãi giữ xe máy tại TP.HCM</p></header>
-    <main>
-      <section className="search-panel" aria-label="Tìm bãi xe">
+    <header><div className="brand">P <span>timbaixe.com</span></div><p>Bản đồ cộng đồng tìm đúng cổng bãi giữ xe máy tại TP.HCM</p><nav aria-label="Điều hướng chính"><button aria-current={view === 'map'} onClick={() => setView('map')}>Tìm bãi</button><button aria-current={view === 'contribute'} onClick={() => { setView('contribute'); setDraftEntrance(null); }}>Đóng góp</button><button aria-current={view === 'admin'} onClick={() => { setView('admin'); setDraftEntrance(null); }}>Quản trị</button></nav></header>
+    <main className={`workspace-${view}`}>
+      {view === 'contribute' ? <ContributePanel entrance={draftEntrance} onLocate={locateDraft} onDone={() => { setView('map'); setDraftEntrance(null); }} /> : view === 'admin' ? <Suspense fallback={<section className="admin-panel"><p role="status">Đang mở quản trị…</p></section>}><AdminPanel onInspect={(point) => { setDraftEntrance(point); map.current?.flyTo({ center: point, zoom: 17 }); }} onPublished={reloadParkings} /></Suspense> : <section className="search-panel" aria-label="Tìm bãi xe">
         <h1>Tìm bãi giữ xe máy</h1>
         <button onClick={locate} disabled={busy}>Dùng vị trí của tôi</button>
         <div className="address-row"><input value={address} onChange={(e) => setAddress(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void lookup(); }} placeholder="Nhập địa chỉ hoặc điểm đến" aria-label="Địa chỉ quán hoặc điểm đến" /><button onClick={() => void lookup()} disabled={busy || !address.trim()}>Tìm</button></div>
@@ -176,12 +222,12 @@ function App() {
         <select id="ward" value={search.kind === 'ward' ? search.code : ''} onChange={(e) => { const code = e.target.value; setSearch(code ? { kind: 'ward', code, label: wards.find(([id]) => id === code)?.[1] ?? '' } : { kind: 'none' }); setMessage(''); }}><option value="">Chọn phường</option>{wards.map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select>
         {message && <p role="status" className="notice">{message}</p>}
         {loadError && <p role="alert" className="notice">{loadError}</p>}
-      </section>
-      <section className="map-section" aria-label="Bản đồ bãi xe"><div ref={mapHost} className="map" /><div className="map-legend"><b>P</b><span>Cổng xe máy vào</span></div></section>
-      <section className="results" aria-label="Danh sách bãi xe">
+      </section>}
+      <section className="map-section" aria-label="Bản đồ bãi xe"><div ref={mapHost} className="map" /><div className="map-legend">{view === 'map' ? <><b>P</b><span>Cổng xe máy vào</span></> : <span>{view === 'contribute' ? 'Chạm bản đồ để đặt ghim cổng vào' : 'Xem ghim đề xuất đang kiểm tra'}</span>}</div>{pinError && view === 'contribute' && <p className="pin-error" role="alert">{pinError}</p>}</section>
+      {view === 'map' && <section className="results" aria-label="Danh sách bãi xe">
         <h2>{search.kind === 'point' ? `Bãi trong ${radius} km quanh ${search.label}` : search.kind === 'ward' ? `Bãi tại phường ${search.label}` : 'Bãi xe đã kiểm chứng'}</h2>
         {results.length ? <ul>{results.map(({ parking, distance }) => <li key={parking.id}><button aria-current={selected?.id === parking.id} onClick={() => openParking(parking)}><span className="p-icon">P</span><span><strong>{parking.name}</strong><small>{parking.address || parking.wardName}</small></span>{distance !== undefined && <span className="distance">{distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(1)} km`}</span>}</button></li>)}</ul> : search.kind === 'point' ? <div className="empty"><p>Chưa có bãi trong bán kính {radius} km.</p><button onClick={() => setRadius((value) => value + 1)}>Tìm xa hơn</button></div> : <p className="empty">Chưa có bãi xe được duyệt trong dữ liệu công khai.</p>}
-      </section>
+      </section>}
     </main>
     {selected && <div className="sheet-backdrop" onClick={closeParking}>
       <section className="detail-sheet" role="dialog" aria-modal="true" aria-label={`Thông tin ${selected.name}`} onClick={(e) => e.stopPropagation()}>
